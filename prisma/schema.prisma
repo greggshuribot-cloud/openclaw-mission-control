@@ -1,0 +1,146 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum AgentRole {
+  CO_FOUNDER
+  PM
+  DEVELOPER
+  QA
+  ARCHITECT
+  DESIGNER
+  STRATEGIST
+  MARKETER
+  GROWTH_HACKER
+  ACCOUNTANT
+  LEGAL
+  HR_DIRECTOR
+}
+
+enum AgentStatus {
+  IDLE
+  WORKING
+  BLOCKED
+  WAITING
+}
+
+enum TaskStatus {
+  TODO
+  IN_PROGRESS
+  IN_REVIEW
+  DONE
+  FAILED
+}
+
+enum ProposalStatus {
+  PENDING_PM
+  PENDING_FOUNDER
+  APPROVED
+  REJECTED
+}
+
+enum ContactStatus {
+  LEAD
+  CONTACTED
+  CLOSED
+}
+
+model User {
+  id           String   @id @default(uuid())
+  email        String   @unique
+  passwordHash String   @map("password_hash")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  agents       Agent[]
+  sprints      Sprint[]
+
+  @@map("users")
+}
+
+model PromptTemplate {
+  id        String   @id @default(uuid())
+  name      String
+  content   String
+  createdAt DateTime @default(now()) @map("created_at")
+
+  agents    Agent[]
+
+  @@map("prompt_templates")
+}
+
+model Agent {
+  id               String        @id @default(uuid())
+  userId           String        @map("user_id")
+  role             AgentRole
+  status           AgentStatus
+  currentLocation  String        @map("current_location")
+  promptTemplateId String?       @map("prompt_template_id")
+
+  user             User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  promptTemplate   PromptTemplate? @relation(fields: [promptTemplateId], references: [id])
+
+  tasks            Task[]
+  proposedCards    ProposalCard[] @relation("ProposingAgent")
+  ownedContacts    CrmContact[]
+
+  @@map("agents")
+}
+
+model Sprint {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  name      String
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tasks     Task[]
+
+  @@map("sprints")
+}
+
+model Task {
+  id              String     @id @default(uuid())
+  sprintId        String     @map("sprint_id")
+  title           String
+  description     String
+  status          TaskStatus
+  assignedAgentId String?    @map("assigned_agent_id")
+  dependencyIds   String[]   @default([]) @map("dependency_ids")
+
+  sprint          Sprint     @relation(fields: [sprintId], references: [id], onDelete: Cascade)
+  assignedAgent   Agent?     @relation(fields: [assignedAgentId], references: [id])
+
+  @@map("tasks")
+}
+
+model ProposalCard {
+  id               String        @id @default(uuid())
+  proposingAgentId String        @map("proposing_agent_id")
+  content          Json
+  status           ProposalStatus
+  pmNotes          String?       @map("pm_notes")
+  createdAt        DateTime      @default(now()) @map("created_at")
+
+  proposingAgent   Agent         @relation("ProposingAgent", fields: [proposingAgentId], references: [id], onDelete: Cascade)
+
+  @@map("proposal_cards")
+}
+
+model CrmContact {
+  id           String        @id @default(uuid())
+  name         String
+  email        String
+  source       String
+  status       ContactStatus
+  ownerAgentId String?       @map("owner_agent_id")
+  createdAt    DateTime      @default(now()) @map("created_at")
+
+  ownerAgent   Agent?        @relation(fields: [ownerAgentId], references: [id])
+
+  @@map("crm_contacts")
+}
