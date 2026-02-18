@@ -27,6 +27,30 @@ npx prisma migrate dev --name init
 npx prisma generate
 ```
 
+## Auth Setup (Milestone 1)
+Set these env vars in `.env`:
+- `SESSION_SECRET` (long random string, at least 32 chars)
+- `FOUNDER_EMAIL`
+- `FOUNDER_PASSWORD`
+
+Example:
+```env
+SESSION_SECRET="replace-with-a-long-random-secret"
+FOUNDER_EMAIL="founder@openclaw.com"
+FOUNDER_PASSWORD="replace-with-a-strong-password"
+```
+
+First login behavior:
+- On the first successful login attempt using `FOUNDER_EMAIL`, the app auto-creates the founder row in `users` if it does not exist yet.
+- Passwords are stored as `scrypt` hashes in `password_hash`.
+
+Auth routes:
+- `POST /api/auth/login`
+- `POST /api/auth/logout`
+
+Route protection:
+- `/` requires a valid session cookie and redirects to `/login` when unauthenticated.
+
 ## Current Scope (v0 Scaffold)
 - Main navigation tabs
 - Office Home view with zones + live agent state
