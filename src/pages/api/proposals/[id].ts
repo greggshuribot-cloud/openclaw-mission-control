@@ -1,5 +1,4 @@
 import type { NextApiRequest, NextApiResponse } from "next";
-import { ProposalStatus } from "@prisma/client";
 import { z } from "zod";
 import { requireFounderSession } from "@/lib/auth/founder-session";
 import {
@@ -12,7 +11,6 @@ const idSchema = z.string().uuid();
 
 const updateProposalSchema = z
   .object({
-    status: z.nativeEnum(ProposalStatus).optional(),
     pmNotes: z.string().trim().max(1000).nullable().optional(),
     title: z.string().trim().min(1).max(160).optional(),
     summary: z.string().trim().min(1).max(4000).optional(),

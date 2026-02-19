@@ -20,7 +20,7 @@ type ProposalRecord = {
 };
 
 function formatStatus(status: ProposalStatus): string {
-  return status.toLowerCase().replace("_", " ");
+  return status.toLowerCase().replaceAll("_", " ");
 }
 
 function statusClasses(status: ProposalStatus): string {
@@ -43,9 +43,14 @@ export function DispatchView() {
   const [submitting, setSubmitting] = useState(false);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<{ type: "success" | "error"; message: string } | null>(null);
 
   const pendingCount = useMemo(
     () => proposals.filter((proposal) => proposal.status === "PENDING_FOUNDER").length,
+    [proposals],
+  );
+  const pendingPmCount = useMemo(
+    () => proposals.filter((proposal) => proposal.status === "PENDING_PM").length,
     [proposals],
   );
 
@@ -93,6 +98,7 @@ export function DispatchView() {
     event.preventDefault();
     setSubmitting(true);
     setError(null);
+    setNotice(null);
 
     try {
       const response = await fetch("/api/proposals", {
@@ -108,6 +114,7 @@ export function DispatchView() {
       setTitle("");
       setSummary("");
       await loadProposals();
+      setNotice({ type: "success", message: "Proposal submitted for PM review." });
     } catch (submitError) {
       setError(submitError instanceof Error ? submitError.message : "Failed to create proposal.");
     } finally {
@@ -115,27 +122,70 @@ export function DispatchView() {
     }
   }
 
-  async function handleUpdateStatus(id: string, status: ProposalStatus) {
+  async function handleTransition(
+    id: string,
+    nextStatus: ProposalStatus,
+    successMessage: (taskCreated: boolean) => string,
+  ) {
     setUpdatingId(id);
     setError(null);
+    setNotice(null);
+    const original = proposals.find((proposal) => proposal.id === id);
+
+    if (original) {
+      setProposals((current) =>
+        current.map((proposal) => (proposal.id === id ? { ...proposal, status: nextStatus } : proposal)),
+      );
+    }
 
     try {
-      const response = await fetch(`/api/proposals/${id}`, {
-        method: "PATCH",
+      const response = await fetch(`/api/proposals/${id}/transition`, {
+        method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status }),
+        body: JSON.stringify({ status: nextStatus }),
       });
 
+      const payload = (await response.json()) as {
+        error?: string;
+        taskCreated?: boolean;
+      };
+
       if (!response.ok) {
-        throw new Error("Failed to update proposal status.");
+        throw new Error(payload.error ?? "Failed to transition proposal.");
       }
 
+      setNotice({
+        type: "success",
+        message: successMessage(Boolean(payload.taskCreated)),
+      });
       await loadProposals();
     } catch (updateError) {
-      setError(updateError instanceof Error ? updateError.message : "Failed to update proposal.");
+      if (original) {
+        setProposals((current) =>
+          current.map((proposal) => (proposal.id === id ? { ...proposal, status: original.status } : proposal)),
+        );
+      }
+      setNotice({
+        type: "error",
+        message: updateError instanceof Error ? updateError.message : "Failed to transition proposal.",
+      });
     } finally {
       setUpdatingId(null);
     }
+  }
+
+  function getStageLabel(status: ProposalStatus): string {
+    if (status === "PENDING_PM") return "PM review";
+    if (status === "PENDING_FOUNDER") return "Founder decision";
+    if (status === "APPROVED") return "Approved";
+    return "Rejected";
+  }
+
+  function getNextActionLabel(status: ProposalStatus): string {
+    if (status === "PENDING_PM") return "PM can forward to founder or reject.";
+    if (status === "PENDING_FOUNDER") return "Founder can approve or reject.";
+    if (status === "APPROVED") return "Task has been queued in sprint.";
+    return "No further actions.";
   }
 
   return (
@@ -162,7 +212,9 @@ export function DispatchView() {
           />
         </div>
         <div className="mt-3 flex items-center justify-between">
-          <p className="text-xs text-zinc-400">Pending founder decisions: {pendingCount}</p>
+          <p className="text-xs text-zinc-400">
+            Pending PM reviews: {pendingPmCount} • Pending founder decisions: {pendingCount}
+          </p>
           <button
             type="submit"
             disabled={submitting}
@@ -175,6 +227,17 @@ export function DispatchView() {
 
       {error ? (
         <div className="rounded-md border border-rose-800 bg-rose-950/30 px-3 py-2 text-sm text-rose-300">{error}</div>
+      ) : null}
+      {notice ? (
+        <div
+          className={
+            notice.type === "success"
+              ? "rounded-md border border-emerald-800 bg-emerald-950/30 px-3 py-2 text-sm text-emerald-300"
+              : "rounded-md border border-rose-800 bg-rose-950/30 px-3 py-2 text-sm text-rose-300"
+          }
+        >
+          {notice.message}
+        </div>
       ) : null}
 
       {loading ? (
@@ -194,6 +257,9 @@ export function DispatchView() {
                   <p className="mt-2 text-xs text-zinc-500">
                     Proposed by {proposal.proposingAgent.role} • {new Date(proposal.createdAt).toLocaleString()}
                   </p>
+                  <p className="mt-2 text-xs text-zinc-400">
+                    Stage: {getStageLabel(proposal.status)} • Next: {getNextActionLabel(proposal.status)}
+                  </p>
                 </div>
                 <span className={`rounded-md border px-2 py-1 text-xs uppercase ${statusClasses(proposal.status)}`}>
                   {formatStatus(proposal.status)}
@@ -201,20 +267,62 @@ export function DispatchView() {
               </div>
 
               <div className="mt-3 flex gap-2">
-                <button
-                  onClick={() => handleUpdateStatus(proposal.id, "APPROVED")}
-                  disabled={updatingId === proposal.id}
-                  className="rounded-md border border-emerald-700 px-3 py-1 text-xs font-medium text-emerald-300 hover:bg-emerald-950/30 disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                  Approve
-                </button>
-                <button
-                  onClick={() => handleUpdateStatus(proposal.id, "REJECTED")}
-                  disabled={updatingId === proposal.id}
-                  className="rounded-md border border-rose-700 px-3 py-1 text-xs font-medium text-rose-300 hover:bg-rose-950/30 disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                  Reject
-                </button>
+                {proposal.status === "PENDING_PM" ? (
+                  <>
+                    <button
+                      onClick={() =>
+                        handleTransition(
+                          proposal.id,
+                          "PENDING_FOUNDER",
+                          () => "Forwarded to founder for approval.",
+                        )
+                      }
+                      disabled={updatingId === proposal.id}
+                      className="rounded-md border border-sky-700 px-3 py-1 text-xs font-medium text-sky-300 hover:bg-sky-950/30 disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      Forward to Founder
+                    </button>
+                    <button
+                      onClick={() =>
+                        handleTransition(proposal.id, "REJECTED", () => "Proposal rejected during PM review.")
+                      }
+                      disabled={updatingId === proposal.id}
+                      className="rounded-md border border-rose-700 px-3 py-1 text-xs font-medium text-rose-300 hover:bg-rose-950/30 disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      Reject
+                    </button>
+                  </>
+                ) : null}
+                {proposal.status === "PENDING_FOUNDER" ? (
+                  <>
+                    <button
+                      onClick={() =>
+                        handleTransition(
+                          proposal.id,
+                          "APPROVED",
+                          (taskCreated) =>
+                            taskCreated
+                              ? "Proposal approved. Task created in current sprint."
+                              : "Proposal approved. Matching sprint task already existed.",
+                        )
+                      }
+                      disabled={updatingId === proposal.id}
+                      className="rounded-md border border-emerald-700 px-3 py-1 text-xs font-medium text-emerald-300 hover:bg-emerald-950/30 disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      Approve
+                    </button>
+                    <button
+                      onClick={() =>
+                        handleTransition(proposal.id, "REJECTED", () => "Proposal rejected by founder.")
+                      }
+                      disabled={updatingId === proposal.id}
+                      className="rounded-md border border-rose-700 px-3 py-1 text-xs font-medium text-rose-300 hover:bg-rose-950/30 disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      Reject
+                    </button>
+                  </>
+                ) : null}
+                {updatingId === proposal.id ? <p className="text-xs text-zinc-500">Updating...</p> : null}
               </div>
             </article>
           ))}

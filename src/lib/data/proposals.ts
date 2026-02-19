@@ -1,4 +1,4 @@
-import { AgentRole, AgentStatus, ProposalStatus, type Prisma } from "@prisma/client";
+import { AgentRole, AgentStatus, ProposalStatus, TaskStatus, type Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 
 export type ProposalContent = {
@@ -13,9 +13,30 @@ export type CreateProposalInput = {
 };
 
 export type UpdateProposalInput = {
-  status?: ProposalStatus;
   pmNotes?: string | null;
   content?: ProposalContent;
+};
+
+type TransitionErrorCode = "NOT_FOUND" | "INVALID_TRANSITION";
+
+export type TransitionProposalResult =
+  | {
+      ok: true;
+      proposal: Awaited<ReturnType<typeof getProposalForFounder>>;
+      taskCreated: boolean;
+    }
+  | {
+      ok: false;
+      code: TransitionErrorCode;
+      message: string;
+      currentStatus?: ProposalStatus;
+    };
+
+const allowedTransitions: Record<ProposalStatus, ProposalStatus[]> = {
+  [ProposalStatus.PENDING_PM]: [ProposalStatus.PENDING_FOUNDER, ProposalStatus.REJECTED],
+  [ProposalStatus.PENDING_FOUNDER]: [ProposalStatus.APPROVED, ProposalStatus.REJECTED],
+  [ProposalStatus.APPROVED]: [],
+  [ProposalStatus.REJECTED]: [],
 };
 
 const proposalInclude = {
@@ -80,7 +101,7 @@ export async function createProposalForFounder(input: CreateProposalInput) {
     data: {
       proposingAgentId: agent.id,
       content: input.content,
-      status: ProposalStatus.PENDING_FOUNDER,
+      status: ProposalStatus.PENDING_PM,
       pmNotes: input.pmNotes,
     },
     include: proposalInclude,
@@ -97,11 +118,93 @@ export async function updateProposalForFounder(userId: string, id: string, input
   return prisma.proposalCard.update({
     where: { id },
     data: {
-      status: input.status,
       pmNotes: input.pmNotes,
       content: input.content,
     },
     include: proposalInclude,
+  });
+}
+
+export async function transitionProposalForFounder(
+  userId: string,
+  id: string,
+  nextStatus: ProposalStatus,
+): Promise<TransitionProposalResult> {
+  return prisma.$transaction(async (tx) => {
+    const existing = await tx.proposalCard.findFirst({
+      where: {
+        id,
+        proposingAgent: { userId },
+      },
+      include: proposalInclude,
+    });
+
+    if (!existing) {
+      return {
+        ok: false,
+        code: "NOT_FOUND",
+        message: "Proposal not found.",
+      };
+    }
+
+    const validNextStatuses = allowedTransitions[existing.status];
+    if (!validNextStatuses.includes(nextStatus)) {
+      return {
+        ok: false,
+        code: "INVALID_TRANSITION",
+        message: `Invalid transition from ${existing.status} to ${nextStatus}.`,
+        currentStatus: existing.status,
+      };
+    }
+
+    const proposal = await tx.proposalCard.update({
+      where: { id },
+      data: { status: nextStatus },
+      include: proposalInclude,
+    });
+
+    let taskCreated = false;
+    if (nextStatus === ProposalStatus.APPROVED) {
+      const content = proposal.content as ProposalContent;
+      const title = (content.title ?? "").trim() || "Untitled proposal";
+      const description = (content.summary ?? "").trim() || "No summary provided.";
+
+      const sprint =
+        (await tx.sprint.findFirst({
+          where: { userId },
+          orderBy: { createdAt: "desc" },
+        })) ??
+        (await tx.sprint.create({
+          data: {
+            userId,
+            name: "Default Sprint",
+          },
+        }));
+
+      const existingTask = await tx.task.findFirst({
+        where: {
+          sprintId: sprint.id,
+          title,
+          description,
+        },
+        select: { id: true },
+      });
+
+      if (!existingTask) {
+        await tx.task.create({
+          data: {
+            sprintId: sprint.id,
+            title,
+            description,
+            status: TaskStatus.TODO,
+            dependencyIds: [],
+          },
+        });
+        taskCreated = true;
+      }
+    }
+
+    return { ok: true, proposal, taskCreated };
   });
 }
 
