@@ -55,6 +55,12 @@ enum EventType {
   MILESTONE
 }
 
+enum DocumentKind {
+  PITCH
+  LEGAL
+  NOTE
+}
+
 model User {
   id           String   @id @default(uuid())
   email        String   @unique
@@ -64,6 +70,7 @@ model User {
   agents       Agent[]
   sprints      Sprint[]
   events       CalendarEvent[]
+  documents    VaultDocument[]
 
   @@map("users")
 }
@@ -167,4 +174,19 @@ model CrmContact {
   ownerAgent   Agent?        @relation(fields: [ownerAgentId], references: [id])
 
   @@map("crm_contacts")
+}
+
+model VaultDocument {
+  id        String       @id @default(uuid())
+  userId    String       @map("user_id")
+  title     String
+  kind      DocumentKind
+  content   String
+  createdAt DateTime     @default(now()) @map("created_at")
+  updatedAt DateTime     @updatedAt @map("updated_at")
+
+  user      User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, updatedAt])
+  @@map("vault_documents")
 }
