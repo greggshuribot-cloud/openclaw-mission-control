@@ -9,6 +9,7 @@ import { CalendarView } from "@/components/calendar-view";
 import { TreasuryView } from "@/components/treasury-view";
 import { NetworkView } from "@/components/network-view";
 import { VaultView } from "@/components/vault-view";
+import { HqView } from "@/components/hq-view";
 import { useMissionControlStore } from "@/store/mission-control";
 
 const tabs = [
@@ -106,9 +107,11 @@ export function AppShell({ founderEmail, treasuryDefaults }: AppShellProps) {
 
         {activeTab === "Network" && <NetworkView />}
 
+        {activeTab === "HQ" && <HqView />}
+
         {activeTab === "Vault" && <VaultView />}
 
-        {!["Office", "Dispatch", "Current Sprint", "Calendar", "Treasury", "Network", "Vault"].includes(activeTab) && (
+        {!["Office", "Dispatch", "Current Sprint", "Calendar", "Treasury", "Network", "Vault", "HQ"].includes(activeTab) && (
           <section className="rounded-xl border border-zinc-800 bg-zinc-900 p-6 text-zinc-300">
             <h2 className="text-lg font-semibold">{activeTab}</h2>
             <p className="mt-2 text-sm text-zinc-400">Scaffold ready. Wiring for this tab is next in Phase 2.</p>
