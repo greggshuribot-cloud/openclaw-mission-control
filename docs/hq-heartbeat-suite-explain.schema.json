@@ -1,0 +1,73 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://openclaw.local/mission-control/docs/hq-heartbeat-suite-explain.schema.json",
+  "title": "HQ Heartbeat Suite Explain Contracts",
+  "description": "Reference schema for hq:heartbeat:suite explain JSON outputs. Documentation-only contract for machine consumers; runtime behavior remains unchanged.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["perSubcheckJsonLine", "aggregateJsonLine"],
+  "$defs": {
+    "perSubcheckJsonLine": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["subcheck", "status", "reason"],
+      "properties": {
+        "subcheck": {
+          "type": "string",
+          "enum": ["check", "smoke", "regression"]
+        },
+        "status": {
+          "type": "string",
+          "enum": ["PASS", "FAIL"]
+        },
+        "reason": {
+          "type": "object",
+          "additionalProperties": true,
+          "required": ["code", "reason"],
+          "properties": {
+            "code": { "type": "string" },
+            "reason": { "type": "string" },
+            "stderrPreview": { "type": "string" },
+            "passed": {
+              "anyOf": [{ "type": "string" }, { "type": "null" }]
+            },
+            "total": {
+              "anyOf": [{ "type": "string" }, { "type": "null" }]
+            },
+            "state": {
+              "anyOf": [{ "type": "string" }, { "type": "null" }]
+            },
+            "status": {
+              "anyOf": [{ "type": "string" }, { "type": "null" }]
+            }
+          }
+        }
+      }
+    },
+    "aggregateJsonLine": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["mode", "status", "passed", "total", "state", "checks"],
+      "properties": {
+        "mode": { "type": "string", "const": "dry-run" },
+        "status": { "type": "string", "enum": ["PASS", "FAIL"] },
+        "passed": { "type": "integer", "minimum": 0 },
+        "total": { "type": "integer", "minimum": 0 },
+        "state": {
+          "type": "string",
+          "pattern": "^check:[PF],smoke:[PF],regression:[PF]$"
+        },
+        "checks": {
+          "type": "array",
+          "minItems": 3,
+          "maxItems": 3,
+          "items": { "$ref": "#/$defs/perSubcheckJsonLine" }
+        }
+      }
+    }
+  },
+  "properties": {
+    "perSubcheckJsonLine": { "$ref": "#/$defs/perSubcheckJsonLine" },
+    "aggregateJsonLine": { "$ref": "#/$defs/aggregateJsonLine" }
+  }
+}

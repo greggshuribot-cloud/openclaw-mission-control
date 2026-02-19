@@ -1,0 +1,151 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://openclaw.local/mission-control/docs/hq-heartbeat.schema.json",
+  "title": "HQ Heartbeat Dry-Run Outputs",
+  "description": "Reference schema for hq:heartbeat outputs across human/json/quiet/tsv modes. This is documentation-only and does not change runtime behavior.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "version",
+    "dryRunOnly",
+    "requiredChecks",
+    "jsonMode",
+    "quietMode",
+    "tsvMode",
+    "exitSemantics"
+  ],
+  "properties": {
+    "version": {
+      "type": "string",
+      "const": "1.0"
+    },
+    "dryRunOnly": {
+      "type": "boolean",
+      "const": true
+    },
+    "requiredChecks": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": ["consistency", "verify", "handoff"]
+      },
+      "minItems": 3,
+      "maxItems": 3,
+      "uniqueItems": true
+    },
+    "jsonMode": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "mode",
+        "command",
+        "hash",
+        "required",
+        "next",
+        "strict",
+        "strictExitCode"
+      ],
+      "properties": {
+        "mode": { "type": "string", "const": "dry-run" },
+        "command": { "type": "string", "const": "hq:heartbeat" },
+        "hash": { "type": "string" },
+        "required": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["passed", "total", "state"],
+          "properties": {
+            "passed": { "type": "integer", "minimum": 0 },
+            "total": { "type": "integer", "const": 3 },
+            "state": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["consistency", "verify", "handoff"],
+              "properties": {
+                "consistency": { "type": "boolean" },
+                "verify": { "type": "boolean" },
+                "handoff": { "type": "boolean" }
+              }
+            }
+          }
+        },
+        "next": { "type": "string" },
+        "strict": { "type": "boolean" },
+        "strictExitCode": { "type": "integer", "enum": [0, 1] }
+      }
+    },
+    "quietMode": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["prefix", "fields"],
+      "properties": {
+        "prefix": { "type": "string", "const": "HQ_HEARTBEAT" },
+        "fields": {
+          "type": "array",
+          "prefixItems": [
+            { "type": "string", "const": "mode" },
+            { "type": "string", "const": "status" },
+            { "type": "string", "const": "hash" },
+            { "type": "string", "const": "required_passed" },
+            { "type": "string", "const": "required_total" },
+            { "type": "string", "const": "state" },
+            { "type": "string", "const": "next_key" },
+            { "type": "string", "const": "strict" },
+            { "type": "string", "const": "strict_exit" }
+          ],
+          "items": false,
+          "minItems": 9,
+          "maxItems": 9
+        }
+      }
+    },
+    "tsvMode": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["columns"],
+      "properties": {
+        "columns": {
+          "type": "array",
+          "prefixItems": [
+            { "type": "string", "const": "type" },
+            { "type": "string", "const": "mode" },
+            { "type": "string", "const": "status" },
+            { "type": "string", "const": "hash" },
+            { "type": "string", "const": "required_passed" },
+            { "type": "string", "const": "required_total" },
+            { "type": "string", "const": "state" },
+            { "type": "string", "const": "next_key" },
+            { "type": "string", "const": "next_command" },
+            { "type": "string", "const": "strict" },
+            { "type": "string", "const": "strict_exit" }
+          ],
+          "items": false,
+          "minItems": 11,
+          "maxItems": 11
+        }
+      }
+    },
+    "exitSemantics": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["nonStrict", "strict", "notes"],
+      "properties": {
+        "nonStrict": {
+          "type": "string",
+          "const": "exit 0 unless runtime/script failure"
+        },
+        "strict": {
+          "type": "string",
+          "const": "exit 1 if any required check fails, otherwise 0"
+        },
+        "notes": {
+          "type": "array",
+          "items": { "type": "string" },
+          "contains": {
+            "type": "string",
+            "const": "Output shape is unchanged by strict mode."
+          }
+        }
+      }
+    }
+  }
+}

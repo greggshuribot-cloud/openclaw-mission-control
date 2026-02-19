@@ -1,0 +1,46 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://openclaw.local/mission-control/docs/hq-heartbeat-preflight.schema.json",
+  "title": "HQ Heartbeat Preflight Contract",
+  "description": "Reference schema for HQ_HEARTBEAT_PREFLIGHT key/value output. Documentation-only contract for machine consumers; runtime behavior remains unchanged.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "mode",
+    "status",
+    "contracts",
+    "contracts_heartbeat_schema",
+    "contracts_suite_explain_contract",
+    "suite",
+    "suite_state",
+    "suite_passed",
+    "suite_total",
+    "founder",
+    "founder_passed",
+    "founder_total",
+    "founder_required_failures",
+    "founder_next_key"
+  ],
+  "properties": {
+    "mode": { "type": "string", "const": "dry-run" },
+    "status": { "type": "string", "enum": ["PASS", "FAIL"] },
+    "contracts": { "type": "string", "enum": ["PASS", "FAIL"] },
+    "contracts_heartbeat_schema": { "type": "string", "enum": ["PASS", "FAIL", "unknown"] },
+    "contracts_suite_explain_contract": { "type": "string", "enum": ["PASS", "FAIL", "unknown"] },
+    "suite": { "type": "string", "enum": ["PASS", "FAIL"] },
+    "suite_state": {
+      "type": "string",
+      "pattern": "^check:[PF],smoke:[PF],regression:[PF]$"
+    },
+    "suite_passed": { "type": "string", "pattern": "^\\d+$" },
+    "suite_total": { "type": "string", "pattern": "^\\d+$" },
+    "founder": { "type": "string", "enum": ["PASS", "FAIL"] },
+    "founder_passed": { "type": "string", "pattern": "^\\d+$" },
+    "founder_total": { "type": "string", "pattern": "^\\d+$" },
+    "founder_required_failures": { "type": "string", "pattern": "^\\d+$" },
+    "founder_next_key": {
+      "type": "string",
+      "enum": ["consistency", "verify", "handoff", "readiness", "releaseNotes", "ship", "unknown"]
+    }
+  }
+}
