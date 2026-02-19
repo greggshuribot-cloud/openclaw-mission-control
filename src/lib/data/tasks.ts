@@ -23,6 +23,7 @@ const taskInclude = {
     select: {
       id: true,
       name: true,
+      createdAt: true,
     },
   },
   assignedAgent: {
@@ -38,7 +39,7 @@ const taskInclude = {
 export async function ensureDefaultSprintForUser(userId: string) {
   const existing = await prisma.sprint.findFirst({
     where: { userId },
-    orderBy: { createdAt: "asc" },
+    orderBy: { createdAt: "desc" },
   });
 
   if (existing) {
