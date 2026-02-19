@@ -27,6 +27,8 @@ const REQUIRED_STEPS = [
   },
 ];
 
+const STEP_TIMEOUT_MS = Number.parseInt(process.env.HQ_HEARTBEAT_STEP_TIMEOUT_MS ?? "45000", 10);
+
 function gitShortHash() {
   try {
     return execSync("git rev-parse --short HEAD", {
@@ -40,13 +42,16 @@ function gitShortHash() {
 
 function runStep(step) {
   const [cmd, ...args] = step.command;
+  const timeout = Number.isFinite(STEP_TIMEOUT_MS) && STEP_TIMEOUT_MS > 0 ? STEP_TIMEOUT_MS : undefined;
   const result = spawnSync(cmd, args, {
     encoding: "utf8",
     stdio: ["ignore", "pipe", "pipe"],
     shell: process.platform === "win32",
+    timeout,
+    killSignal: "SIGKILL",
   });
 
-  const passed = (result.status ?? 1) === 0;
+  const passed = (result.status ?? 1) === 0 && !result.error;
   return { ...step, passed };
 }
 
@@ -75,6 +80,7 @@ function usage() {
   console.log("--quiet emits a minimal, cron-safe token line with stable parseable fields.");
   console.log("--tsv emits a single tab-separated row for shell-friendly cron ingestion.");
   console.log("--strict exits non-zero when required checks fail (dry-run status gating for automation/cron).");
+  console.log("Set HQ_HEARTBEAT_STEP_TIMEOUT_MS to cap each required check runtime (default: 45000ms).");
 }
 
 function hasRequiredFailures(results) {

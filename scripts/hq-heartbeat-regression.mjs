@@ -18,12 +18,16 @@ function usage() {
   console.log("--strict exits non-zero when any invariant fails.");
 }
 
-function runCommand(command, commandArgs) {
+function runCommand(command, commandArgs, envOverrides = {}) {
   try {
     const output = execFileSync(command, commandArgs, {
       cwd: repoRoot,
       encoding: "utf8",
       stdio: ["ignore", "pipe", "pipe"],
+      env: {
+        ...process.env,
+        ...envOverrides,
+      },
     }).trim();
     return { ok: true, output };
   } catch (error) {
@@ -108,13 +112,19 @@ function main() {
   const jsonRun = runCommand("npm", ["run", "--silent", "hq:heartbeat", "--", "--json"]);
   const quietRun = runCommand("npm", ["run", "--silent", "hq:heartbeat", "--", "--quiet"]);
   const tsvRun = runCommand("npm", ["run", "--silent", "hq:heartbeat", "--", "--tsv"]);
+  const timeoutQuietRun = runCommand(
+    "npm",
+    ["run", "--silent", "hq:heartbeat", "--", "--quiet"],
+    { HQ_HEARTBEAT_STEP_TIMEOUT_MS: "1" },
+  );
 
   checks.push({ name: "exec:human", pass: humanRun.ok });
   checks.push({ name: "exec:json", pass: jsonRun.ok });
   checks.push({ name: "exec:quiet", pass: quietRun.ok });
   checks.push({ name: "exec:tsv", pass: tsvRun.ok });
+  checks.push({ name: "exec:quiet-timeout", pass: timeoutQuietRun.ok });
 
-  if (!humanRun.ok || !jsonRun.ok || !quietRun.ok || !tsvRun.ok) {
+  if (!humanRun.ok || !jsonRun.ok || !quietRun.ok || !tsvRun.ok || !timeoutQuietRun.ok) {
     const failed = checks.filter((c) => !c.pass);
     const strictExitCode = strictMode && failed.length > 0 ? 1 : 0;
     console.log(
@@ -137,6 +147,7 @@ function main() {
   const jsonRaw = jsonRun.output;
   const quiet = parseQuiet(quietRun.output);
   const tsv = parseTsv(tsvRun.output);
+  const timeoutQuiet = parseQuiet(timeoutQuietRun.output);
 
   checks.push({
     name: "human:prefix",
@@ -180,6 +191,13 @@ function main() {
   if (quiet) {
     checks.push({ name: "quiet:order", pass: quiet.orderPass });
     checks.push({ name: "quiet:prefix", pass: quiet.values.mode === "dry-run" });
+  }
+
+  checks.push({ name: "quiet-timeout:parse", pass: Boolean(timeoutQuiet) });
+  if (timeoutQuiet) {
+    checks.push({ name: "quiet-timeout:order", pass: timeoutQuiet.orderPass });
+    checks.push({ name: "quiet-timeout:status", pass: timeoutQuiet.values.status === "FAIL" });
+    checks.push({ name: "quiet-timeout:next-key", pass: timeoutQuiet.values.next_key === "consistency" });
   }
 
   checks.push({ name: "tsv:parse", pass: Boolean(tsv) });
