@@ -35,8 +35,11 @@ function statusClasses(status: ProposalStatus): string {
   return "border-zinc-700 bg-zinc-800/60 text-zinc-300";
 }
 
+type DispatchFilter = "ALL" | "ACTIONABLE" | "PENDING_PM" | "PENDING_FOUNDER" | "APPROVED" | "REJECTED";
+
 export function DispatchView() {
   const [proposals, setProposals] = useState<ProposalRecord[]>([]);
+  const [filter, setFilter] = useState<DispatchFilter>("ACTIONABLE");
   const [title, setTitle] = useState("");
   const [summary, setSummary] = useState("");
   const [loading, setLoading] = useState(true);
@@ -55,6 +58,22 @@ export function DispatchView() {
     () => proposals.filter((proposal) => proposal.status === "PENDING_PM").length,
     [proposals],
   );
+  const approvedCount = useMemo(
+    () => proposals.filter((proposal) => proposal.status === "APPROVED").length,
+    [proposals],
+  );
+  const rejectedCount = useMemo(
+    () => proposals.filter((proposal) => proposal.status === "REJECTED").length,
+    [proposals],
+  );
+
+  const visibleProposals = useMemo(() => {
+    if (filter === "ALL") return proposals;
+    if (filter === "ACTIONABLE") {
+      return proposals.filter((proposal) => proposal.status === "PENDING_PM" || proposal.status === "PENDING_FOUNDER");
+    }
+    return proposals.filter((proposal) => proposal.status === filter);
+  }, [filter, proposals]);
 
   const loadProposals = useCallback(async () => {
     setError(null);
@@ -272,6 +291,36 @@ export function DispatchView() {
         </div>
       </form>
 
+      <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-3">
+        <p className="text-xs text-zinc-400">Filter queue</p>
+        <div className="mt-2 flex flex-wrap gap-2 text-xs">
+          {[
+            { key: "ACTIONABLE", label: `Actionable (${pendingPmCount + pendingCount})` },
+            { key: "PENDING_PM", label: `PM review (${pendingPmCount})` },
+            { key: "PENDING_FOUNDER", label: `Founder decision (${pendingCount})` },
+            { key: "APPROVED", label: `Approved (${approvedCount})` },
+            { key: "REJECTED", label: `Rejected (${rejectedCount})` },
+            { key: "ALL", label: `All (${proposals.length})` },
+          ].map((item) => {
+            const selected = filter === item.key;
+            return (
+              <button
+                key={item.key}
+                type="button"
+                onClick={() => setFilter(item.key as DispatchFilter)}
+                className={`rounded-md border px-2 py-1 transition ${
+                  selected
+                    ? "border-zinc-500 bg-zinc-200 text-zinc-900"
+                    : "border-zinc-700 bg-zinc-900 text-zinc-300 hover:bg-zinc-800"
+                }`}
+              >
+                {item.label}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
       {error ? (
         <div className="rounded-md border border-rose-800 bg-rose-950/30 px-3 py-2 text-sm text-rose-300">{error}</div>
       ) : null}
@@ -293,9 +342,13 @@ export function DispatchView() {
         <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-4 text-sm text-zinc-400">
           No proposals yet.
         </div>
+      ) : visibleProposals.length === 0 ? (
+        <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-4 text-sm text-zinc-400">
+          No proposals match the current filter.
+        </div>
       ) : (
         <div className="grid gap-3">
-          {proposals.map((proposal) => (
+          {visibleProposals.map((proposal) => (
             <article key={proposal.id} className="rounded-xl border border-zinc-800 bg-zinc-900 p-4">
               <div className="flex items-start justify-between gap-3">
                 <div>
