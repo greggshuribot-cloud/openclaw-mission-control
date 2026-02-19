@@ -2,7 +2,7 @@ import { createHmac, timingSafeEqual } from "node:crypto";
 import { cookies } from "next/headers";
 import type { NextResponse } from "next/server";
 
-const SESSION_COOKIE_NAME = "openclaw_session";
+export const SESSION_COOKIE_NAME = "openclaw_session";
 const SESSION_MAX_AGE_SECONDS = 60 * 60 * 24 * 7;
 
 export type SessionPayload = {

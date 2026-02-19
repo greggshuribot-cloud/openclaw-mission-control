@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { OfficeView } from "@/components/office-view";
+import { DispatchView } from "@/components/dispatch-view";
 import { SprintView } from "@/components/sprint-view";
 import { useMissionControlStore } from "@/store/mission-control";
 
@@ -87,16 +88,7 @@ export function AppShell({ founderEmail }: AppShellProps) {
       <main className="mx-auto max-w-7xl px-6 pb-10">
         {activeTab === "Office" && <OfficeView />}
 
-        {activeTab === "Dispatch" && (
-          <section className="grid gap-3">
-            {["Proposal: Add Gatekeeper API", "Risk: Runway below 3 days", "Legal: Terms of Service draft"].map((item) => (
-              <article key={item} className="rounded-xl border border-zinc-800 bg-zinc-900 p-4">
-                <h3 className="font-medium">{item}</h3>
-                <p className="mt-1 text-sm text-zinc-400">Approve / Reject / Consult Shuri action flow (stub)</p>
-              </article>
-            ))}
-          </section>
-        )}
+        {activeTab === "Dispatch" && <DispatchView />}
 
         {activeTab === "Current Sprint" && <SprintView />}
 
