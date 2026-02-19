@@ -38,6 +38,8 @@ Example:
 SESSION_SECRET="replace-with-a-long-random-secret"
 FOUNDER_EMAIL="founder@openclaw.com"
 FOUNDER_PASSWORD="replace-with-a-strong-password"
+MONTHLY_CAP_UNITS="10000"
+CURRENT_USED_UNITS="2500"
 ```
 
 First login behavior:

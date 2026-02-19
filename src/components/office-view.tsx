@@ -14,14 +14,14 @@ const zones = [
 ];
 
 export function OfficeView() {
-  const { agents, burnRatePct, tick } = useMissionControlStore();
+  const { agents, officeLightingFactor, tick } = useMissionControlStore();
 
   useEffect(() => {
     const id = setInterval(() => tick(), 900);
     return () => clearInterval(id);
   }, [tick]);
 
-  const lightAlpha = 0.35 + Math.max(0.2, burnRatePct / 100) * 0.65;
+  const lightAlpha = 0.25 + officeLightingFactor * 0.75;
 
   return (
     <div className="rounded-xl border border-zinc-800 bg-zinc-950 p-3">

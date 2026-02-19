@@ -6,14 +6,17 @@ import { Agent, INITIAL_AGENTS } from "@/lib/agents";
 type MissionControlState = {
   agents: Agent[];
   burnRatePct: number;
+  officeLightingFactor: number;
   meetingMode: boolean;
   tick: () => void;
   triggerMeeting: () => void;
+  setTreasuryTelemetry: (input: { burnRatePct: number; officeLightingFactor: number }) => void;
 };
 
 export const useMissionControlStore = create<MissionControlState>((set, get) => ({
   agents: INITIAL_AGENTS,
   burnRatePct: 74,
+  officeLightingFactor: 0.74,
   meetingMode: false,
   tick: () => {
     if (get().meetingMode) return;
@@ -35,4 +38,10 @@ export const useMissionControlStore = create<MissionControlState>((set, get) => 
         y: state.meetingMode ? a.y : 250 + Math.floor(idx / 6) * 45,
       })),
     })),
+  setTreasuryTelemetry: ({ burnRatePct, officeLightingFactor }) => {
+    set({
+      burnRatePct: Math.max(0, Math.round(burnRatePct)),
+      officeLightingFactor: Math.max(0.2, Math.min(1, officeLightingFactor)),
+    });
+  },
 }));

@@ -6,6 +6,7 @@ import { OfficeView } from "@/components/office-view";
 import { DispatchView } from "@/components/dispatch-view";
 import { SprintView } from "@/components/sprint-view";
 import { CalendarView } from "@/components/calendar-view";
+import { TreasuryView } from "@/components/treasury-view";
 import { useMissionControlStore } from "@/store/mission-control";
 
 const tabs = [
@@ -21,9 +22,13 @@ const tabs = [
 
 type AppShellProps = {
   founderEmail: string;
+  treasuryDefaults: {
+    monthlyCapUnits: number | null;
+    currentUsedUnits: number | null;
+  };
 };
 
-export function AppShell({ founderEmail }: AppShellProps) {
+export function AppShell({ founderEmail, treasuryDefaults }: AppShellProps) {
   const [activeTab, setActiveTab] = useState<(typeof tabs)[number]>("Office");
   const [logoutPending, setLogoutPending] = useState(false);
   const router = useRouter();
@@ -95,7 +100,9 @@ export function AppShell({ founderEmail }: AppShellProps) {
 
         {activeTab === "Calendar" && <CalendarView />}
 
-        {!["Office", "Dispatch", "Current Sprint", "Calendar"].includes(activeTab) && (
+        {activeTab === "Treasury" && <TreasuryView defaults={treasuryDefaults} />}
+
+        {!["Office", "Dispatch", "Current Sprint", "Calendar", "Treasury"].includes(activeTab) && (
           <section className="rounded-xl border border-zinc-800 bg-zinc-900 p-6 text-zinc-300">
             <h2 className="text-lg font-semibold">{activeTab}</h2>
             <p className="mt-2 text-sm text-zinc-400">Scaffold ready. Wiring for this tab is next in Phase 2.</p>
