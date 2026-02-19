@@ -42,8 +42,10 @@ export function DispatchView() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
+  const [savingNotesId, setSavingNotesId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<{ type: "success" | "error"; message: string } | null>(null);
+  const [notesById, setNotesById] = useState<Record<string, string>>({});
 
   const pendingCount = useMemo(
     () => proposals.filter((proposal) => proposal.status === "PENDING_FOUNDER").length,
@@ -68,6 +70,16 @@ export function DispatchView() {
 
     const body = (await response.json()) as { proposals: ProposalRecord[] };
     setProposals(body.proposals);
+    setNotesById((current) => {
+      const next: Record<string, string> = {};
+
+      for (const proposal of body.proposals) {
+        const existingDraft = current[proposal.id];
+        next[proposal.id] = existingDraft ?? proposal.pmNotes ?? "";
+      }
+
+      return next;
+    });
   }, []);
 
   useEffect(() => {
@@ -142,7 +154,10 @@ export function DispatchView() {
       const response = await fetch(`/api/proposals/${id}/transition`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: nextStatus }),
+        body: JSON.stringify({
+          status: nextStatus,
+          pmNotes: notesById[id]?.trim() ? notesById[id].trim() : null,
+        }),
       });
 
       const payload = (await response.json()) as {
@@ -171,6 +186,38 @@ export function DispatchView() {
       });
     } finally {
       setUpdatingId(null);
+    }
+  }
+
+  async function handleSaveNotes(id: string) {
+    setSavingNotesId(id);
+    setError(null);
+    setNotice(null);
+
+    try {
+      const response = await fetch(`/api/proposals/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          pmNotes: notesById[id]?.trim() ? notesById[id].trim() : null,
+        }),
+      });
+
+      const payload = (await response.json()) as { error?: string };
+
+      if (!response.ok) {
+        throw new Error(payload.error ?? "Failed to save PM notes.");
+      }
+
+      setNotice({ type: "success", message: "PM notes saved." });
+      await loadProposals();
+    } catch (saveError) {
+      setNotice({
+        type: "error",
+        message: saveError instanceof Error ? saveError.message : "Failed to save PM notes.",
+      });
+    } finally {
+      setSavingNotesId(null);
     }
   }
 
@@ -264,6 +311,37 @@ export function DispatchView() {
                 <span className={`rounded-md border px-2 py-1 text-xs uppercase ${statusClasses(proposal.status)}`}>
                   {formatStatus(proposal.status)}
                 </span>
+              </div>
+
+              <div className="mt-3 grid gap-2">
+                <label className="text-xs text-zinc-400" htmlFor={`pm-notes-${proposal.id}`}>
+                  PM notes (handoff context)
+                </label>
+                <textarea
+                  id={`pm-notes-${proposal.id}`}
+                  value={notesById[proposal.id] ?? ""}
+                  onChange={(event) =>
+                    setNotesById((current) => ({
+                      ...current,
+                      [proposal.id]: event.target.value,
+                    }))
+                  }
+                  rows={2}
+                  maxLength={1000}
+                  placeholder="Optional context for PM/founder decisions"
+                  className="rounded-md border border-zinc-700 bg-zinc-950 px-3 py-2 text-xs text-zinc-100 outline-none focus:border-zinc-500"
+                />
+                <div className="flex items-center justify-between">
+                  <p className="text-xs text-zinc-500">{(notesById[proposal.id] ?? "").length}/1000 chars</p>
+                  <button
+                    type="button"
+                    onClick={() => handleSaveNotes(proposal.id)}
+                    disabled={savingNotesId === proposal.id || updatingId === proposal.id}
+                    className="rounded-md border border-zinc-700 px-2 py-1 text-xs text-zinc-200 hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {savingNotesId === proposal.id ? "Saving..." : "Save notes"}
+                  </button>
+                </div>
               </div>
 
               <div className="mt-3 flex gap-2">

@@ -129,6 +129,7 @@ export async function transitionProposalForFounder(
   userId: string,
   id: string,
   nextStatus: ProposalStatus,
+  pmNotes?: string | null,
 ): Promise<TransitionProposalResult> {
   return prisma.$transaction(async (tx) => {
     const existing = await tx.proposalCard.findFirst({
@@ -159,7 +160,10 @@ export async function transitionProposalForFounder(
 
     const proposal = await tx.proposalCard.update({
       where: { id },
-      data: { status: nextStatus },
+      data: {
+        status: nextStatus,
+        ...(pmNotes !== undefined ? { pmNotes } : {}),
+      },
       include: proposalInclude,
     });
 

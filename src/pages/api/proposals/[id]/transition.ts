@@ -8,6 +8,7 @@ const idSchema = z.string().uuid();
 
 const transitionSchema = z.object({
   status: z.nativeEnum(ProposalStatus),
+  pmNotes: z.string().trim().max(1000).nullable().optional(),
 });
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -34,7 +35,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(400).json({ error: "Invalid transition payload." });
   }
 
-  const result = await transitionProposalForFounder(session.userId, parsedId.data, parsedPayload.data.status);
+  const result = await transitionProposalForFounder(
+    session.userId,
+    parsedId.data,
+    parsedPayload.data.status,
+    parsedPayload.data.pmNotes,
+  );
 
   if (!result.ok) {
     if (result.code === "NOT_FOUND") {
