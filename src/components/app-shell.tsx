@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { OfficeView } from "@/components/office-view";
 import { DispatchView } from "@/components/dispatch-view";
 import { SprintView } from "@/components/sprint-view";
+import { CalendarView } from "@/components/calendar-view";
 import { useMissionControlStore } from "@/store/mission-control";
 
 const tabs = [
@@ -92,7 +93,9 @@ export function AppShell({ founderEmail }: AppShellProps) {
 
         {activeTab === "Current Sprint" && <SprintView />}
 
-        {!["Office", "Dispatch", "Current Sprint"].includes(activeTab) && (
+        {activeTab === "Calendar" && <CalendarView />}
+
+        {!["Office", "Dispatch", "Current Sprint", "Calendar"].includes(activeTab) && (
           <section className="rounded-xl border border-zinc-800 bg-zinc-900 p-6 text-zinc-300">
             <h2 className="text-lg font-semibold">{activeTab}</h2>
             <p className="mt-2 text-sm text-zinc-400">Scaffold ready. Wiring for this tab is next in Phase 2.</p>

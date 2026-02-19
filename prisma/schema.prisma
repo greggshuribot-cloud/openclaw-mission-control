@@ -49,6 +49,12 @@ enum ContactStatus {
   CLOSED
 }
 
+enum EventType {
+  DEADLINE
+  MEETING
+  MILESTONE
+}
+
 model User {
   id           String   @id @default(uuid())
   email        String   @unique
@@ -57,6 +63,7 @@ model User {
 
   agents       Agent[]
   sprints      Sprint[]
+  events       CalendarEvent[]
 
   @@map("users")
 }
@@ -110,11 +117,29 @@ model Task {
   status          TaskStatus
   assignedAgentId String?    @map("assigned_agent_id")
   dependencyIds   String[]   @default([]) @map("dependency_ids")
+  createdAt       DateTime   @default(now()) @map("created_at")
+  updatedAt       DateTime   @updatedAt @map("updated_at")
 
   sprint          Sprint     @relation(fields: [sprintId], references: [id], onDelete: Cascade)
   assignedAgent   Agent?     @relation(fields: [assignedAgentId], references: [id])
 
   @@map("tasks")
+}
+
+model CalendarEvent {
+  id          String    @id @default(uuid())
+  userId      String    @map("user_id")
+  title       String
+  description String?
+  startAt     DateTime  @map("start_at")
+  endAt       DateTime? @map("end_at")
+  type        EventType
+  createdAt   DateTime  @default(now()) @map("created_at")
+
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, startAt])
+  @@map("calendar_events")
 }
 
 model ProposalCard {
