@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import * as PIXI from "pixi.js";
 import { useMissionControlStore } from "@/store/mission-control";
 import type { Agent, AgentLocation } from "@/lib/agents";
+import { TaskAssignmentModal, type AssignedTaskInfo } from "@/components/task-assignment-modal";
 
 const CANVAS_WIDTH = 900;
 const CANVAS_HEIGHT = 440;
@@ -87,6 +88,7 @@ type SelectedAgent = {
   role: string;
   status: string;
   location: string;
+  assignedTask?: AssignedTaskInfo | null;
 };
 
 type SelectedZone = {
@@ -113,8 +115,24 @@ export function OfficeCanvasPixi() {
 
   const [selectedAgent, setSelectedAgent] = useState<SelectedAgent | null>(null);
   const [selectedZone, setSelectedZone] = useState<SelectedZone | null>(null);
+  const [modalOpen, setModalOpen] = useState(false);
+  const agentTaskMapRef = useRef<Record<string, AssignedTaskInfo | null>>({});
 
   const { agents, officeLightingFactor, tick, updateAgentPosition } = useMissionControlStore();
+
+  const handleAssigned = useCallback((task: AssignedTaskInfo) => {
+    const agentId = selectedAgentIdRef.current;
+    if (!agentId) return;
+    agentTaskMapRef.current = { ...agentTaskMapRef.current, [agentId]: task };
+    setSelectedAgent((prev) => (prev ? { ...prev, assignedTask: task } : null));
+  }, []);
+
+  const handleUnassigned = useCallback(() => {
+    const agentId = selectedAgentIdRef.current;
+    if (!agentId) return;
+    agentTaskMapRef.current = { ...agentTaskMapRef.current, [agentId]: null };
+    setSelectedAgent((prev) => (prev ? { ...prev, assignedTask: null } : null));
+  }, []);
 
   // Keep refs in sync with latest values
   useEffect(() => {
@@ -428,6 +446,7 @@ export function OfficeCanvasPixi() {
             role: current.role,
             status: current.status,
             location: current.location,
+            assignedTask: agentTaskMapRef.current[current.id],
           });
         });
 
@@ -577,13 +596,42 @@ export function OfficeCanvasPixi() {
                 <dt className="text-xs text-zinc-500">Location</dt>
                 <dd className="text-zinc-200">{selectedAgent.location}</dd>
               </div>
+              {selectedAgent.assignedTask !== undefined && (
+                <div>
+                  <dt className="text-xs text-zinc-500">Assigned Task</dt>
+                  {selectedAgent.assignedTask ? (
+                    <>
+                      <dd className="text-blue-400">{selectedAgent.assignedTask.title}</dd>
+                      <dd className="mt-1 text-xs text-zinc-500">
+                        {selectedAgent.assignedTask.status.toLowerCase().replaceAll("_", " ")}
+                      </dd>
+                    </>
+                  ) : (
+                    <dd className="text-zinc-500">No task assigned</dd>
+                  )}
+                </div>
+              )}
             </dl>
-            <button className="mt-4 w-full rounded bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700">
+            <button
+              onClick={() => setModalOpen(true)}
+              className="mt-4 w-full rounded bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+            >
               Assign Task
             </button>
           </>
         )}
       </div>
+
+      {/* Task Assignment Modal */}
+      {selectedAgent && (
+        <TaskAssignmentModal
+          isOpen={modalOpen}
+          onClose={() => setModalOpen(false)}
+          agentRole={selectedAgent.role}
+          onAssigned={handleAssigned}
+          onUnassigned={handleUnassigned}
+        />
+      )}
     </div>
   );
 }
