@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { OfficeView } from "@/components/office-view";
+import { OfficeCanvasPixi } from "@/components/office-canvas-pixi";
 import { DispatchView } from "@/components/dispatch-view";
 import { SprintView } from "@/components/sprint-view";
 import { CalendarView } from "@/components/calendar-view";
@@ -95,7 +95,7 @@ export function AppShell({ founderEmail, treasuryDefaults }: AppShellProps) {
       </nav>
 
       <main className="mx-auto max-w-7xl px-6 pb-10">
-        {activeTab === "Office" && <OfficeView />}
+        {activeTab === "Office" && <OfficeCanvasPixi />}
 
         {activeTab === "Dispatch" && <DispatchView />}
 
