@@ -1,7 +1,7 @@
 "use client";
 
 import { create } from "zustand";
-import { Agent, INITIAL_AGENTS } from "@/lib/agents";
+import { Agent, AgentLocation, INITIAL_AGENTS } from "@/lib/agents";
 
 type MissionControlState = {
   agents: Agent[];
@@ -11,6 +11,7 @@ type MissionControlState = {
   tick: () => void;
   triggerMeeting: () => void;
   setTreasuryTelemetry: (input: { burnRatePct: number; officeLightingFactor: number }) => void;
+  updateAgentPosition: (agentId: string, x: number, y: number, location?: AgentLocation) => void;
 };
 
 export const useMissionControlStore = create<MissionControlState>((set, get) => ({
@@ -44,4 +45,12 @@ export const useMissionControlStore = create<MissionControlState>((set, get) => 
       officeLightingFactor: Math.max(0.2, Math.min(1, officeLightingFactor)),
     });
   },
+  updateAgentPosition: (agentId, x, y, location) =>
+    set((state) => ({
+      agents: state.agents.map((a) =>
+        a.id === agentId
+          ? { ...a, x, y, ...(location !== undefined ? { location } : {}) }
+          : a
+      ),
+    })),
 }));
