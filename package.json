@@ -36,8 +36,10 @@
   },
   "dependencies": {
     "@pixi/react": "^8.0.5",
+    "@prisma/adapter-pg": "^7.4.1",
     "@prisma/client": "^7.4.0",
     "next": "16.1.6",
+    "pg": "^8.18.0",
     "pixi.js": "^8.16.0",
     "react": "19.2.3",
     "react-dom": "19.2.3",
