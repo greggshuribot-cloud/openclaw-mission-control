@@ -123,14 +123,29 @@ model Task {
   description     String
   status          TaskStatus
   assignedAgentId String?    @map("assigned_agent_id")
-  dependencyIds   String[]   @default([]) @map("dependency_ids")
   createdAt       DateTime   @default(now()) @map("created_at")
   updatedAt       DateTime   @updatedAt @map("updated_at")
 
   sprint          Sprint     @relation(fields: [sprintId], references: [id], onDelete: Cascade)
   assignedAgent   Agent?     @relation(fields: [assignedAgentId], references: [id])
 
+  dependencies    TaskDependency[] @relation("DependentTask")
+  dependents      TaskDependency[] @relation("DependsOnTask")
+
   @@map("tasks")
+}
+
+model TaskDependency {
+  id            String   @id @default(uuid())
+  taskId        String   @map("task_id")
+  dependsOnId   String   @map("depends_on_id")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  task          Task     @relation("DependentTask", fields: [taskId], references: [id], onDelete: Cascade)
+  dependsOn     Task     @relation("DependsOnTask", fields: [dependsOnId], references: [id], onDelete: Cascade)
+
+  @@unique([taskId, dependsOnId])
+  @@map("task_dependencies")
 }
 
 model CalendarEvent {
